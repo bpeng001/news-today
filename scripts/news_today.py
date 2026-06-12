@@ -83,6 +83,9 @@ RELEVANT_ONLY = True
 MINIMUM_RELEVANCE_SCORE = 2
 REQUIRE_DIRECT_KEYWORD_MATCH = True
 REQUIRE_RECENT_DATE = False
+VALIDATE_LINKS = True
+REQUIRE_EXISTING_LINK = True
+LINK_CHECK_TIMEOUT = 10.0
 
 USER_AGENT_BASE = "CodexDailyNewsDigest/1.0"
 ATOM_NS = {"atom": "http://www.w3.org/2005/Atom"}
@@ -224,6 +227,7 @@ def apply_runtime_config(args: argparse.Namespace) -> None:
     global RECIPIENT_EMAIL, LANGUAGE, TIMEZONE, SCHEDULE_TIME, SOURCES, KEYWORD_GROUPS
     global TOPIC_KEYWORD_GROUPS, ALLOWED_SOURCE_TYPES, TOP_NEWSPAPER_DOMAINS
     global RELEVANT_ONLY, MINIMUM_RELEVANCE_SCORE, REQUIRE_DIRECT_KEYWORD_MATCH, REQUIRE_RECENT_DATE
+    global VALIDATE_LINKS, REQUIRE_EXISTING_LINK, LINK_CHECK_TIMEOUT
 
     RECIPIENT_EMAIL = clean_text(config.get("recipient_email"))
     LANGUAGE = clean_text(config.get("language")) or LANGUAGE
@@ -248,6 +252,9 @@ def apply_runtime_config(args: argparse.Namespace) -> None:
     MINIMUM_RELEVANCE_SCORE = int(config.get("minimum_relevance_score", MINIMUM_RELEVANCE_SCORE))
     REQUIRE_DIRECT_KEYWORD_MATCH = bool(config.get("require_direct_keyword_match", REQUIRE_DIRECT_KEYWORD_MATCH))
     REQUIRE_RECENT_DATE = bool(config.get("require_recent_date", REQUIRE_RECENT_DATE))
+    VALIDATE_LINKS = bool(config.get("validate_links", VALIDATE_LINKS))
+    REQUIRE_EXISTING_LINK = bool(config.get("require_existing_link", REQUIRE_EXISTING_LINK))
+    LINK_CHECK_TIMEOUT = float(config.get("link_check_timeout", LINK_CHECK_TIMEOUT))
 
     if args.command == "fetch":
         output_dir = args.output_dir or clean_text(config.get("output_dir")) or str(DEFAULT_OUTPUT_DIR)
@@ -256,6 +263,9 @@ def apply_runtime_config(args: argparse.Namespace) -> None:
         args.lookback_hours = int_setting(args.lookback_hours, config, "lookback_hours", 36)
         args.max_items = int_setting(args.max_items, config, "max_items", 25)
         args.sleep = float_setting(args.sleep, config, "sleep", 0.25)
+        args.validate_links = VALIDATE_LINKS if args.validate_links is None else args.validate_links
+        args.require_existing_link = REQUIRE_EXISTING_LINK if args.require_existing_link is None else args.require_existing_link
+        args.link_check_timeout = float_setting(args.link_check_timeout, config, "link_check_timeout", LINK_CHECK_TIMEOUT)
     elif args.command == "mark-success":
         args.state_file = args.state_file or clean_text(config.get("state_file")) or str(DEFAULT_STATE_FILE)
 
@@ -289,6 +299,75 @@ def http_text(url: str, *, retries: int = 3, delay: float = 0.6) -> str:
                 continue
             raise RuntimeError(last_error) from exc
     raise RuntimeError(last_error or f"Failed to fetch {url}")
+
+
+def check_link(url: str, timeout: float) -> dict[str, Any]:
+    url = clean_text(url)
+    if not url:
+        return {"status": "missing", "ok": False, "http_status": None, "final_url": "", "error": "missing link"}
+
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme == "file":
+        path = Path(urllib.request.url2pathname(parsed.path))
+        exists = path.exists()
+        return {
+            "status": "ok" if exists else "not_found",
+            "ok": exists,
+            "http_status": None,
+            "final_url": url,
+            "error": "" if exists else "file does not exist",
+        }
+    if parsed.scheme not in {"http", "https"}:
+        return {"status": "unsupported_scheme", "ok": False, "http_status": None, "final_url": url, "error": parsed.scheme}
+
+    headers = {"User-Agent": user_agent(), "Accept": "text/html,application/xhtml+xml,*/*"}
+    for method in ("HEAD", "GET"):
+        request_headers = dict(headers)
+        if method == "GET":
+            request_headers["Range"] = "bytes=0-0"
+        request = urllib.request.Request(url, headers=request_headers, method=method)
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                code = int(response.getcode() or 0)
+                final_url = response.geturl()
+            return {
+                "status": "ok" if 200 <= code < 400 else "http_error",
+                "ok": 200 <= code < 400,
+                "http_status": code,
+                "final_url": final_url,
+                "error": "",
+            }
+        except urllib.error.HTTPError as exc:
+            code = int(exc.code)
+            if method == "HEAD" and code in {405, 501}:
+                continue
+            if code in {401, 403}:
+                return {
+                    "status": "access_limited",
+                    "ok": True,
+                    "http_status": code,
+                    "final_url": exc.geturl() or url,
+                    "error": f"HTTP {code}; page exists but automated access is limited",
+                }
+            return {
+                "status": "not_found" if code in {404, 410} else "http_error",
+                "ok": False,
+                "http_status": code,
+                "final_url": exc.geturl() or url,
+                "error": f"HTTP {code}",
+            }
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if method == "HEAD":
+                continue
+            return {
+                "status": "check_failed",
+                "ok": False,
+                "http_status": None,
+                "final_url": url,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+
+    return {"status": "check_failed", "ok": False, "http_status": None, "final_url": url, "error": "link check failed"}
 
 
 def parse_date(value: Any) -> str:
@@ -534,6 +613,7 @@ def normalized_candidate(item: dict[str, Any], window_from: dt.datetime, window_
         "source_country": clean_text(source.get("country")),
         "source_url": clean_text(source.get("url")),
         "link": clean_text(item.get("link")),
+        "link_validation": {"status": "not_checked", "ok": None, "http_status": None, "final_url": "", "error": ""},
         "guid": clean_text(item.get("guid")),
         "published_at": clean_text(item.get("published_at")),
         "summary": summary,
@@ -590,6 +670,23 @@ def fetch_candidates(args: argparse.Namespace) -> Path:
             time.sleep(args.sleep)
 
     candidates.sort(key=lambda item: (item.get("published_at") or "", item.get("relevance_score") or 0), reverse=True)
+    if args.validate_links:
+        checked_candidates: list[dict[str, Any]] = []
+        for candidate in candidates:
+            candidate["link_validation"] = check_link(clean_text(candidate.get("link")), args.link_check_timeout)
+            if args.require_existing_link and not candidate["link_validation"].get("ok"):
+                errors.append(
+                    {
+                        "source": clean_text(candidate.get("source")),
+                        "url": clean_text(candidate.get("link")),
+                        "error": f"candidate link failed validation: {candidate['link_validation'].get('status')}",
+                    }
+                )
+                continue
+            checked_candidates.append(candidate)
+            if args.sleep:
+                time.sleep(args.sleep)
+        candidates = checked_candidates
     candidates = candidates[: args.max_items]
 
     payload = {
@@ -610,6 +707,9 @@ def fetch_candidates(args: argparse.Namespace) -> Path:
             "minimum_relevance_score": MINIMUM_RELEVANCE_SCORE,
             "require_direct_keyword_match": REQUIRE_DIRECT_KEYWORD_MATCH,
             "require_recent_date": REQUIRE_RECENT_DATE,
+            "validate_links": args.validate_links,
+            "require_existing_link": args.require_existing_link,
+            "link_check_timeout": args.link_check_timeout,
             "keyword_groups": KEYWORD_GROUPS,
             "topic_keyword_groups": TOPIC_KEYWORD_GROUPS,
         },
@@ -620,6 +720,7 @@ def fetch_candidates(args: argparse.Namespace) -> Path:
         "skipped_sources": skipped_sources,
         "notes": [
             "Only open RSS/Atom metadata and snippets were fetched.",
+            "Candidate article links were checked after feed search when validate_links is enabled.",
             "No paywalled article body or login-protected content was read.",
             "Government and curated top-newspaper source policy was enforced before filtering.",
         ],
@@ -675,6 +776,9 @@ def build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--max-items", type=int)
     fetch.add_argument("--sleep", type=float)
     fetch.add_argument("--include-seen", action="store_true")
+    fetch.add_argument("--validate-links", action=argparse.BooleanOptionalAction, default=None)
+    fetch.add_argument("--require-existing-link", action=argparse.BooleanOptionalAction, default=None)
+    fetch.add_argument("--link-check-timeout", type=float)
 
     success = subparsers.add_parser("mark-success", help="Update state after a digest is generated.")
     success.add_argument("--state-file")

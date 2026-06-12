@@ -20,6 +20,7 @@ Do not scrape arbitrary websites, social media, blogs, newsletters, or search-re
    - Workspace path and Python command.
    - Topic scope, with English and/or Chinese keyword groups.
    - Expanded topic terms. Broad topics must be expanded into concrete entities, synonyms, subtopics, and abbreviations before the first fetch.
+   - Link validation policy. Keep `validate_links` and `require_existing_link` enabled unless the user explicitly asks for diagnostic output.
    - Source policy: only `government` and `top_newspaper` source types.
    - Approved feed list. Prefer official RSS/Atom feeds from government agencies and curated top newspapers.
 2. Copy `scripts/news_today.py` into the user's workspace.
@@ -28,7 +29,7 @@ Do not scrape arbitrary websites, social media, blogs, newsletters, or search-re
    ```bash
    python scripts/news_today.py --config news-today.config.json fetch --include-seen
    ```
-5. Read the printed JSON path and write the Markdown archive to `news-today-digests/YYYY-MM-DD.md`.
+5. Read the printed JSON path and write the Markdown archive to `news-today-digests/YYYY-MM-DD.md`. Include the exact article/source page link for every item.
 6. If records have only a title and no feed summary, keep them title-level and state that no article body was read.
 7. Send email through Gmail when available. If Gmail is unavailable, do not ask for SMTP credentials; record `not-configured`.
 8. Mark success only after the Markdown archive exists:
@@ -96,6 +97,7 @@ Include a news item in the main digest only when it passes the configured policy
 
 - Source type is `government` or `top_newspaper`.
 - `top_newspaper` sources match `top_newspaper_domains` unless explicitly configured and justified.
+- Exact item link is present and passes link validation when `require_existing_link` is enabled. Treat 2xx/3xx as verified and 401/403 as existing but access-limited; reject missing links, 404/410, unsupported schemes, and failed checks.
 - `relevant_only`: remove weak, query-only, source-only, and off-topic records.
 - `require_direct_keyword_match`: require title, summary, content snippet, or categories to show topic evidence.
 - `minimum_relevance_score`: enforce the configured score threshold.
@@ -105,7 +107,7 @@ If no items pass, still write and send a concise no-results digest. Do not relax
 
 ## Summary Rules
 
-Use only feed metadata: title, source, source type, date, link, summary/content snippet, categories, matched keywords, and open feed metadata in the JSON. Do not infer facts from the headline alone.
+Use only feed metadata: title, source, source type, date, exact item link, link validation status, summary/content snippet, categories, matched keywords, and open feed metadata in the JSON. Do not infer facts from the headline alone.
 
 Write the digest and Gmail body in the configured language:
 
@@ -117,7 +119,7 @@ When writing in Chinese, translate interpretation fields, section headings, rele
 For each included item, report:
 
 - Title.
-- Source, source type, date, and link.
+- Source, source type, date, exact article/source page link, and link validation status.
 - Matched keyword group or topic-keyword group.
 - Priority and relevance.
 - What happened, why it matters for the user's topic, confidence/limitations, and suggested follow-up.
@@ -135,6 +137,7 @@ The automation prompt must include:
 - Exact fetch command using `--config`.
 - Recipient email, language, schedule time, timezone, and output directory.
 - Explicit instruction to write the Markdown archive and Gmail email body in the configured language, including Chinese when requested.
+- Explicit instruction to include the exact item link for every news item and exclude items whose links fail validation when `require_existing_link` is enabled.
 - Original user topic and keywords, and a note that expanded terms live in `keyword_groups`.
 - Expanded topic terms, including concrete examples for broad topics such as infectious disease, climate, energy, AI, trade, or public health.
 - Approved source policy: government and curated top newspapers only.

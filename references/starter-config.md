@@ -15,6 +15,9 @@ Use this as the default shape for `news-today.config.json`. Replace user-specifi
   "minimum_relevance_score": 2,
   "require_direct_keyword_match": true,
   "require_recent_date": false,
+  "validate_links": true,
+  "require_existing_link": true,
+  "link_check_timeout": 10,
   "allowed_source_types": [
     "government",
     "top_newspaper"
@@ -165,6 +168,7 @@ Use this as the default shape for `news-today.config.json`. Replace user-specifi
 Notes:
 
 - `recipient_email`, `timezone`, and `schedule_time` are used by Codex when it sends the Gmail digest and creates the recurring automation.
+- Keep `validate_links: true` and `require_existing_link: true` so every digest item has an exact article/source page link that was checked after feed search. The script treats 2xx/3xx as verified and 401/403 as existing but access-limited.
 - Keep `allowed_source_types` limited to `government` and `top_newspaper`.
 - Use `sources[]` for official RSS/Atom feeds only. Verify feed URLs during setup; feeds change more often than source names.
 - Government sources should be official agency, regulator, court, legislature, central bank, public-health, or multilateral feeds.

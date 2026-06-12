@@ -17,6 +17,8 @@ The skill does not scrape arbitrary websites, social media, blogs, newsletters, 
 - Expands broad topics into concrete keywords before fetching, such as turning `infectious disease` into measles, influenza/flu, avian flu, RSV, COVID-19, outbreak, surveillance, vaccination, transmission, and Chinese equivalents.
 - Supports topic-plus-keyword combinations, such as `AI governance && regulation` or `人工智能治理 && 监管`.
 - Summarizes only open feed metadata and snippets during unattended runs.
+- Provides the exact article/source page link for every included item.
+- Checks each item link after feed search and excludes missing or failed links by default.
 - Writes and emails the digest in English or Chinese.
 - Writes local archives under `news-today-digests/`.
 - Sends the concise digest through the Codex Gmail connector when Gmail is connected.
@@ -77,6 +79,12 @@ Keep `allowed_source_types` limited to:
 ```
 
 For `top_newspaper` feeds, the feed host must match `top_newspaper_domains` unless the source is explicitly reviewed and added.
+
+## Link Validation
+
+Each included news item should have an exact article/source page link from the feed. By default, `validate_links` and `require_existing_link` are enabled in the config.
+
+The script treats HTTP 2xx/3xx as verified. It also treats HTTP 401/403 as existing but access-limited, because some top newspapers block automated checks while the article page still exists. Missing links, 404/410 responses, unsupported schemes, and failed checks are excluded from the candidate list by default.
 
 ## Language
 
