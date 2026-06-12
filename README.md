@@ -14,6 +14,7 @@ The skill does not scrape arbitrary websites, social media, blogs, newsletters, 
 - Runs a daily news digest at your chosen local time.
 - Reads official RSS/Atom feeds from government sources and curated top newspapers only.
 - Supports English and Chinese keyword groups.
+- Expands broad topics into concrete keywords before fetching, such as turning `infectious disease` into measles, influenza/flu, avian flu, RSV, COVID-19, outbreak, surveillance, vaccination, transmission, and Chinese equivalents.
 - Supports topic-plus-keyword combinations, such as `AI governance && regulation` or `人工智能治理 && 监管`.
 - Summarizes only open feed metadata and snippets during unattended runs.
 - Writes and emails the digest in English or Chinese.
@@ -40,6 +41,8 @@ Only use government sources and top newspapers.
 My topic is AI governance and regulation.
 Include English and Chinese keywords.
 ```
+
+For example, if your topic is infectious disease, Codex should not search only the exact phrase `infectious disease`. It should expand the config with terms such as `measles`, `measles outbreak`, `influenza`, `flu`, `avian flu`, `RSV`, `COVID-19`, `outbreak`, `surveillance`, `vaccination`, `transmission`, `麻疹`, `流感`, `禽流感`, `疫情`, `疫苗接种`, and `传播`.
 
 Codex will:
 
@@ -83,6 +86,8 @@ Set `language` to:
 - `zh-CN` for Simplified Chinese
 
 Chinese and English keywords can be mixed in `keyword_groups` and `topic_keyword_groups`.
+
+Broad topics should be expanded in `keyword_groups[].terms`; the script performs literal feed matching, so concrete disease names, agencies, places, abbreviations, and Chinese phrases are important.
 
 ## Connect Gmail
 

@@ -19,6 +19,7 @@ Do not scrape arbitrary websites, social media, blogs, newsletters, or search-re
    - Timezone and daily schedule.
    - Workspace path and Python command.
    - Topic scope, with English and/or Chinese keyword groups.
+   - Expanded topic terms. Broad topics must be expanded into concrete entities, synonyms, subtopics, and abbreviations before the first fetch.
    - Source policy: only `government` and `top_newspaper` source types.
    - Approved feed list. Prefer official RSS/Atom feeds from government agencies and curated top newspapers.
 2. Copy `scripts/news_today.py` into the user's workspace.
@@ -70,6 +71,8 @@ Use two complementary filter modes:
 
 - **Standalone topic keywords**: Match every term in `keyword_groups[].terms` against item title, feed summary/content, and categories.
 - **Topic-plus-keyword combinations**: For each `topic_keyword_groups[]`, keep an item only when metadata visibly contains evidence for both the topic side and the keyword side.
+
+Expand broad user topics before creating `keyword_groups`. Do not rely only on the user's exact phrase. For example, if the user says `infectious disease`, include specific disease names and common news terms such as `measles`, `influenza`, `flu`, `avian flu`, `RSV`, `COVID-19`, `outbreak`, `surveillance`, `vaccination`, `transmission`, `麻疹`, `流感`, `禽流感`, `呼吸道合胞病毒`, `新冠`, `疫情`, `监测`, `疫苗`, and `传播`.
 
 English and Chinese terms can coexist in the same config. For Chinese, include concrete phrases and entity names because unattended feed matching uses literal substring checks rather than semantic search.
 
@@ -133,6 +136,7 @@ The automation prompt must include:
 - Recipient email, language, schedule time, timezone, and output directory.
 - Explicit instruction to write the Markdown archive and Gmail email body in the configured language, including Chinese when requested.
 - Original user topic and keywords, and a note that expanded terms live in `keyword_groups`.
+- Expanded topic terms, including concrete examples for broad topics such as infectious disease, climate, energy, AI, trade, or public health.
 - Approved source policy: government and curated top newspapers only.
 - Topic-keyword combination instructions when `topic_keyword_groups` is configured.
 - Instruction to summarize open feed metadata/snippets only.

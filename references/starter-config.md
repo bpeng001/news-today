@@ -114,6 +114,49 @@ Use this as the default shape for `news-today.config.json`. Replace user-specifi
         "公共卫生政策",
         "疾病防控"
       ]
+    },
+    {
+      "label": "infectious disease",
+      "terms": [
+        "infectious disease",
+        "communicable disease",
+        "disease outbreak",
+        "outbreak",
+        "epidemic",
+        "surveillance",
+        "case count",
+        "vaccination",
+        "vaccine coverage",
+        "transmission",
+        "measles",
+        "measles outbreak",
+        "influenza",
+        "flu",
+        "seasonal flu",
+        "avian flu",
+        "H5N1",
+        "RSV",
+        "respiratory syncytial virus",
+        "COVID-19",
+        "SARS-CoV-2",
+        "传染病",
+        "感染性疾病",
+        "疫情",
+        "暴发",
+        "流行病",
+        "疾病监测",
+        "病例",
+        "疫苗接种",
+        "疫苗覆盖率",
+        "传播",
+        "麻疹",
+        "麻疹疫情",
+        "流感",
+        "季节性流感",
+        "禽流感",
+        "呼吸道合胞病毒",
+        "新冠"
+      ]
     }
   ]
 }
@@ -128,5 +171,6 @@ Notes:
 - Top-newspaper sources should be curated and must either match `top_newspaper_domains` or be explicitly added after the user approves the source.
 - Set `language` to `en` for English or `zh-CN` for Simplified Chinese. When `zh-CN` is used, write the Markdown archive and email body in Chinese while preserving source metadata such as titles, source names, and URLs.
 - Use English and Chinese terms together when the topic crosses languages. Literal Chinese phrases work better than broad single characters.
+- Expand broad topics into concrete entities and subtopics before the first fetch. For example, `infectious disease` should include terms for measles, influenza/flu, avian flu, RSV, COVID-19, outbreaks, surveillance, vaccination, transmission, and Chinese equivalents.
 - Keep `lookback_hours` wider than 24 when feeds publish across time zones.
 - The fetch script does not send Gmail or create automations itself. Codex should use the Gmail connector and `automation_update` after the validation fetch and Markdown archive are complete.
