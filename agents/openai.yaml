@@ -1,4 +1,4 @@
 interface:
   display_name: "News Today"
   short_description: "Daily trusted-source topic news digest"
-  default_prompt: "Use $news-today to create or update a daily English or Chinese topic news digest from government sources and curated top newspapers only, archive Markdown, and send the result by Gmail."
+  default_prompt: "Use $news-today to create or update a daily English or Chinese topic news digest from government sources and curated top newspapers only, archive Markdown, send the result by Gmail, and set the recurring Codex automation."

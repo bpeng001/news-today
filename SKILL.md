@@ -36,6 +36,19 @@ Do not scrape arbitrary websites, social media, blogs, newsletters, or search-re
    ```
 9. Create or update a Codex cron automation at the user's local time.
 
+## Gmail and Automation
+
+Use the Gmail connector for delivery when it is connected. Do not request SMTP credentials, app passwords, OAuth secrets, or account passwords.
+
+During setup:
+
+- Create and save the first Markdown archive before sending.
+- Send the concise digest body through Gmail to `recipient_email` when Gmail tools are available.
+- If Gmail is unavailable, leave the Markdown archive in place and call `mark-success` with `--email-status not-configured`.
+- After a successful validation run, create or update a Codex cron automation using the user's schedule and timezone.
+
+The automation should rerun the fetch command, write the Markdown digest, send the Gmail digest if available, and call `mark-success` each time. Prefer updating an existing `news-today` automation over creating duplicates.
+
 ## Source Rules
 
 Use strict source admission:

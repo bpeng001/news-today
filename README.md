@@ -1,6 +1,6 @@
 # News Today
 
-`news-today` is a Codex skill for building a daily topic-specific news digest from trusted sources only.
+`news-today` is a Codex skill for building a reusable daily topic-specific news digest from trusted sources only. It fetches open RSS/Atom metadata, filters by English or Chinese keywords, writes a local Markdown archive, sends the digest through the Codex Gmail connector, and creates a recurring Codex automation.
 
 It is designed for English or Chinese digests and restricts unattended fetching to:
 
@@ -8,6 +8,18 @@ It is designed for English or Chinese digests and restricts unattended fetching 
 - curated top newspaper feeds, such as The New York Times and other explicitly approved major outlets
 
 The skill does not scrape arbitrary websites, social media, blogs, newsletters, or paywalled article bodies.
+
+## What It Does
+
+- Runs a daily news digest at your chosen local time.
+- Reads official RSS/Atom feeds from government sources and curated top newspapers only.
+- Supports English and Chinese keyword groups.
+- Supports topic-plus-keyword combinations, such as `AI governance && regulation` or `人工智能治理 && 监管`.
+- Summarizes only open feed metadata and snippets during unattended runs.
+- Writes and emails the digest in English or Chinese.
+- Writes local archives under `news-today-digests/`.
+- Sends the concise digest through the Codex Gmail connector when Gmail is connected.
+- Creates or updates the recurring local Codex automation.
 
 ## Contents
 
@@ -18,7 +30,27 @@ The skill does not scrape arbitrary websites, social media, blogs, newsletters, 
 
 ## Basic Usage
 
-Create a workspace config from `references/starter-config.md`, then run:
+After installing the skill and connecting Gmail, ask Codex something like:
+
+```text
+Use $news-today to create a daily topic news digest.
+Send it to me@example.com every day at 09:00.
+Use English/Chinese.
+Only use government sources and top newspapers.
+My topic is AI governance and regulation.
+Include English and Chinese keywords.
+```
+
+Codex will:
+
+1. Copy `scripts/news_today.py` into your workspace.
+2. Create `news-today.config.json`.
+3. Run an initial validation fetch.
+4. Write the first Markdown digest.
+5. Send the digest by Gmail if connected.
+6. Create the recurring local Codex automation.
+
+For manual testing, create a workspace config from `references/starter-config.md`, then run:
 
 ```bash
 python scripts/news_today.py --config news-today.config.json fetch --include-seen
@@ -51,3 +83,13 @@ Set `language` to:
 - `zh-CN` for Simplified Chinese
 
 Chinese and English keywords can be mixed in `keyword_groups` and `topic_keyword_groups`.
+
+## Connect Gmail
+
+In Codex, connect the Gmail app/connector for the account that should send the digest. This skill uses Gmail connector tools only; it does not ask for SMTP credentials, Gmail app passwords, or account passwords.
+
+If Gmail is not connected, Codex should still write the Markdown archive and mark the run with `email-status` set to `not-configured`.
+
+## Automation Caveat
+
+Codex local automations depend on your local Codex runner/environment. If your computer is asleep, shut down, offline, or the local automation runner is not active at the scheduled time, the digest may not run until the environment is available again.

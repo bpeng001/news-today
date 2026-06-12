@@ -121,6 +121,7 @@ Use this as the default shape for `news-today.config.json`. Replace user-specifi
 
 Notes:
 
+- `recipient_email`, `timezone`, and `schedule_time` are used by Codex when it sends the Gmail digest and creates the recurring automation.
 - Keep `allowed_source_types` limited to `government` and `top_newspaper`.
 - Use `sources[]` for official RSS/Atom feeds only. Verify feed URLs during setup; feeds change more often than source names.
 - Government sources should be official agency, regulator, court, legislature, central bank, public-health, or multilateral feeds.
@@ -128,3 +129,4 @@ Notes:
 - Set `language` to `en` for English or `zh-CN` for Simplified Chinese. When `zh-CN` is used, write the Markdown archive and email body in Chinese while preserving source metadata such as titles, source names, and URLs.
 - Use English and Chinese terms together when the topic crosses languages. Literal Chinese phrases work better than broad single characters.
 - Keep `lookback_hours` wider than 24 when feeds publish across time zones.
+- The fetch script does not send Gmail or create automations itself. Codex should use the Gmail connector and `automation_update` after the validation fetch and Markdown archive are complete.
